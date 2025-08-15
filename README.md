@@ -61,7 +61,23 @@ export OPENAI_API_KEY="your_api_key_here"
 
 Or configure your API endpoint if using a different service.
 
-## 📖 Usage
+## 📁 Data Files
+
+The solver expects ARC data files in JSON format:
+
+- **`arc-agi_training_challenges-3.json`** - Training task inputs and outputs
+- **`arc-agi_training_solutions-3.json`** - Ground truth solutions for evaluation
+- **`_run_summary.json`** - Generated summary of solver results (output file)
+
+### File Structure
+```
+your-project/
+├── arc_solver.py                           # Main solver code
+├── arc-agi_training_challenges-3.json      # Training challenges
+├── arc-agi_training_solutions-3.json       # Training solutions
+├── _run_summary.json                       # Generated results summary
+└── README.md
+```
 
 ### Basic Usage
 
@@ -90,10 +106,41 @@ result = run_task(
 display_task_results([result], challenges)
 ```
 
-### Batch Processing
+### Complete Training Set Evaluation
 
 ```python
-# Solve multiple tasks
+import json
+
+# Load ARC training data
+with open("arc-agi_training_challenges-3.json") as f:
+    challenges = json.load(f)
+with open("arc-agi_training_solutions-3.json") as f:
+    solutions = json.load(f)
+
+# Configuration
+model = 'deepseek-ai/DeepSeek-R1-Zero'  # or 'gpt-4o'
+attempts = 2
+
+# Process all training tasks
+results = []
+for task_id, challenge in challenges.items():
+    res = run_task(task_id, challenge, solutions, attempts, model)
+    results.append(res)
+
+# Save comprehensive results
+out_path = "_run_summary.json"
+with open(out_path, "w") as f:
+    json.dump(results, f, indent=2)
+print(f"\nSaved summary to: {out_path}")
+
+# Visualize all results with matplotlib
+display_task_results(results, challenges)
+```
+
+### Selective Task Processing
+
+```python
+# Solve specific tasks only
 results = []
 task_ids = ["00576224", "007bbfb7", "ff805c23"]  # Example task IDs
 
@@ -114,12 +161,64 @@ display_task_results(results, challenges)
 
 ### Configuration Options
 
-- **`attempts`**: Number of refinement iterations (default: varies)
-- **`model`**: LLM model to use (default: "deepseek-ai/DeepSeek-R1-Zero")
+- **`attempts`**: Number of refinement iterations (default: 2 for full evaluation, 3-5 for individual tasks)
+- **`model`**: LLM model to use 
+  - `"deepseek-ai/DeepSeek-R1-Zero"` (default, recommended)
+  - `"gpt-4o"` (OpenAI GPT-4)
+  - Any OpenAI-compatible model
 - **`temperature`**: Sampling temperature for LLM (default: 0.2)
 - **`printgrid`**: Enable/disable grid printing in console (global variable)
 
-## 📊 Output Format
+### Results Analysis
+
+After running the complete evaluation, the solver generates `_run_summary.json` containing:
+- Per-task results and accuracy
+- Generated explanations and code
+- Test predictions vs ground truth
+- Overall performance statistics
+
+Access the summary programmatically:
+```python
+with open("_run_summary.json") as f:
+    summary = json.load(f)
+    
+# Calculate overall accuracy
+correct = sum(1 for result in summary if result.get("test_match"))
+total = len(summary)
+accuracy = correct / total
+print(f"Overall accuracy: {accuracy:.2%} ({correct}/{total})")
+```
+
+## 🎨 Visualization Features
+
+The solver includes comprehensive matplotlib-based visualization that displays:
+
+- **Training Pairs**: Input and output grids for each training example
+- **Test Predictions**: Model-generated solutions 
+- **Ground Truth**: Actual correct answers (when available)
+- **Accuracy Metrics**: Success rate and detailed comparisons
+
+### Visualization Usage
+
+```python
+# After running your solver on multiple tasks
+results = [...]  # Your results from run_task calls
+
+# Display interactive visualizations for all tasks
+display_task_results(results, challenges)
+```
+
+This will show:
+1. **LLM Explanation** for each task
+2. **Training pair visualizations** (input → output)
+3. **Test result comparison** (input → prediction → ground truth)
+4. **Overall accuracy statistics**
+
+The visualization automatically handles:
+- Grid color mapping (0-9 values with viridis colormap)
+- Proper subplot layouts for multiple training pairs
+- Success/failure indicators
+- Comprehensive accuracy reporting
 
 The solver returns structured results for each task:
 
